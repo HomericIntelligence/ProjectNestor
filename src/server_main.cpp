@@ -1,6 +1,4 @@
-// ProjectNestor HTTP Server — C++20 skeleton
-// Real business logic is TODO; this binary compiles and serves stub responses.
-// The Python stub in stub/server.py is used for E2E testing until this is complete.
+// ProjectNestor HTTP Server — C++20
 
 #include <csignal>
 #include <cstdlib>
@@ -8,7 +6,9 @@
 #include <string>
 
 #include "httplib.h"
+#include "projectnestor/nats_client.hpp"
 #include "projectnestor/routes.hpp"
+#include "projectnestor/store.hpp"
 #include "projectnestor/version.hpp"
 
 namespace {
@@ -29,8 +29,23 @@ int main() {
     return env != nullptr ? std::stoi(env) : 8081;
   }();
 
+  const std::string nats_url = []() -> std::string {
+    const char* env = std::getenv("NATS_URL");
+    return env != nullptr ? env : "nats://localhost:4222";
+  }();
+
   std::cout << projectnestor::kProjectName << " v" << projectnestor::kVersion << "\n";
   std::cout << "Starting HTTP server on " << host << ":" << port << "\n";
+
+  projectnestor::Store store;
+  projectnestor::NatsClient nats(nats_url);
+
+  // Graceful degradation: server runs even if NATS is unavailable.
+  if (!nats.connect()) {
+    std::cout << "[main] NATS unavailable — running without event publishing.\n";
+  } else {
+    nats.ensure_streams();
+  }
 
   httplib::Server server;
   g_server = &server;
@@ -38,7 +53,7 @@ int main() {
   std::signal(SIGINT, signal_handler);
   std::signal(SIGTERM, signal_handler);
 
-  projectnestor::register_routes(server);
+  projectnestor::register_routes(server, store, nats);
 
   std::cout << "Routes registered. Listening...\n";
   if (!server.listen(host, port)) {
