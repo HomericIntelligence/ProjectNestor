@@ -50,23 +50,38 @@ FetchContent_Declare(
   GIT_SHALLOW    TRUE
 )
 
-FetchContent_MakeAvailable(cpp-httplib nlohmann_json)
+FetchContent_Declare(
+  natsc
+  GIT_REPOSITORY https://github.com/nats-io/nats.c.git
+  GIT_TAG        v3.9.1
+  GIT_SHALLOW    TRUE
+)
+
+set(NATS_BUILD_STREAMING OFF CACHE BOOL "" FORCE)
+set(NATS_BUILD_EXAMPLES  OFF CACHE BOOL "" FORCE)
+set(BUILD_TESTING        OFF CACHE BOOL "" FORCE)
+
+FetchContent_MakeAvailable(cpp-httplib nlohmann_json natsc)
 
 # ─── Server Executable ─────────────────────────────────────────────────────
 add_executable(ProjectNestor_server
   src/server_main.cpp
   src/routes.cpp
+  src/store.cpp
+  src/nats_client.cpp
 )
 
 target_include_directories(ProjectNestor_server PRIVATE
   include/
   ${cpp-httplib_SOURCE_DIR}
   ${nlohmann_json_SOURCE_DIR}/include
+  ${natsc_SOURCE_DIR}/include
 )
 
 target_link_libraries(ProjectNestor_server PRIVATE
   httplib::httplib
   nlohmann_json::nlohmann_json
+  nats_static
 )
 
 target_compile_features(ProjectNestor_server PRIVATE cxx_std_20)
