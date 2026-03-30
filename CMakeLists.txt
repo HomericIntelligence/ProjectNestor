@@ -33,6 +33,44 @@ target_include_directories(
 
 set_project_warnings(${PROJECT_NAME})
 
+# ─── HTTP Server Dependencies ───────────────────────────────────────────────
+include(FetchContent)
+
+FetchContent_Declare(
+  cpp-httplib
+  GIT_REPOSITORY https://github.com/yhirose/cpp-httplib.git
+  GIT_TAG        v0.18.3
+  GIT_SHALLOW    TRUE
+)
+
+FetchContent_Declare(
+  nlohmann_json
+  GIT_REPOSITORY https://github.com/nlohmann/json.git
+  GIT_TAG        v3.11.3
+  GIT_SHALLOW    TRUE
+)
+
+FetchContent_MakeAvailable(cpp-httplib nlohmann_json)
+
+# ─── Server Executable ─────────────────────────────────────────────────────
+add_executable(ProjectNestor_server
+  src/server_main.cpp
+  src/routes.cpp
+)
+
+target_include_directories(ProjectNestor_server PRIVATE
+  include/
+  ${cpp-httplib_SOURCE_DIR}
+  ${nlohmann_json_SOURCE_DIR}/include
+)
+
+target_link_libraries(ProjectNestor_server PRIVATE
+  httplib::httplib
+  nlohmann_json::nlohmann_json
+)
+
+target_compile_features(ProjectNestor_server PRIVATE cxx_std_20)
+
 if(${PROJECT_NAME}_BUILD_TESTING)
   enable_testing()
   add_subdirectory(test)
