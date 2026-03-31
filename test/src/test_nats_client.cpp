@@ -1,5 +1,7 @@
 #include "projectnestor/nats_client.hpp"
 
+#include <memory>
+
 #include <gtest/gtest.h>
 
 namespace projectnestor::test {
@@ -27,9 +29,9 @@ TEST(NatsClientTest, EnsureStreamsWhenNotConnectedReturnsEarly) {
 }
 
 TEST(NatsClientTest, DestructorWhenNotConnected) {
-  {
-    NatsClient client("nats://localhost:4222");
-  }
+  auto ptr = std::make_unique<NatsClient>("nats://localhost:4222");
+  EXPECT_FALSE(ptr->is_connected());
+  ptr.reset();
   SUCCEED();
 }
 
