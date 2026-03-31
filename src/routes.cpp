@@ -11,6 +11,9 @@ namespace projectnestor {
 using json = nlohmann::json;
 
 void register_routes(httplib::Server& server, Store& store, NatsClient& nats) {
+  Store* sp = &store;
+  NatsClient* np = &nats;
+
   // ── Health ────────────────────────────────────────────────────────────────
 
   server.Get("/v1/health", [](const httplib::Request& /*req*/, httplib::Response& res) {
@@ -20,12 +23,12 @@ void register_routes(httplib::Server& server, Store& store, NatsClient& nats) {
   // ── Research ─────────────────────────────────────────────────────────────
 
   server.Get("/v1/research/stats",
-             [&store](const httplib::Request& /*req*/, httplib::Response& res) {
-               res.set_content(store.get_stats().dump(), "application/json");
+             [sp](const httplib::Request& /*req*/, httplib::Response& res) {
+               res.set_content(sp->get_stats().dump(), "application/json");
              });
 
   server.Post("/v1/research",
-              [&store, &nats](const httplib::Request& req, httplib::Response& res) {
+              [sp, np](const httplib::Request& req, httplib::Response& res) {
                 const auto body = json::parse(req.body, nullptr, false);
                 if (body.is_discarded()) {
                   res.status = 400;
@@ -33,7 +36,7 @@ void register_routes(httplib::Server& server, Store& store, NatsClient& nats) {
                   return;
                 }
 
-                const json result = store.submit_research(body);
+                const json result = sp->submit_research(body);
                 const std::string id = result["id"].get<std::string>();
 
                 // Publish to hi.research.<id> — graceful degradation if NATS unavailable.
@@ -41,7 +44,7 @@ void register_routes(httplib::Server& server, Store& store, NatsClient& nats) {
                 json payload = body;
                 payload["id"] = id;
                 payload["status"] = "pending";
-                nats.publish(subject, payload.dump());
+                np->publish(subject, payload.dump());
 
                 res.status = 202;
                 res.set_content(result.dump(), "application/json");
