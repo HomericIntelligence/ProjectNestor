@@ -1,7 +1,7 @@
-# Sources and headers for the ProjectNestor library target (version header only).
-# The server executable (ProjectNestor_server) sources are declared directly in CMakeLists.txt.
+# Sources and headers for the ProjectNestor library target (version only).
+# The server executable sources are declared directly in CMakeLists.txt.
 set(sources
-    src/main.cpp)
+    src/version_info.cpp)
 
 set(headers
     include/projectnestor/version.hpp)
