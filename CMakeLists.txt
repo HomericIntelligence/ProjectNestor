@@ -63,26 +63,34 @@ set(BUILD_TESTING        OFF CACHE BOOL "" FORCE)
 
 FetchContent_MakeAvailable(cpp-httplib nlohmann_json natsc)
 
-# ─── Server Executable ─────────────────────────────────────────────────────
-add_executable(ProjectNestor_server
-  src/server_main.cpp
-  src/routes.cpp
+# ─── Testable Core Library (everything except main) ────────────────────────
+add_library(${PROJECT_NAME}_core STATIC
   src/store.cpp
+  src/routes.cpp
   src/nats_client.cpp
 )
+add_library(${PROJECT_NAME}::core ALIAS ${PROJECT_NAME}_core)
 
-target_include_directories(ProjectNestor_server PRIVATE
-  include/
+target_include_directories(${PROJECT_NAME}_core PUBLIC
+  ${PROJECT_SOURCE_DIR}/include
   ${cpp-httplib_SOURCE_DIR}
   ${nlohmann_json_SOURCE_DIR}/include
   ${natsc_SOURCE_DIR}/include
 )
 
-target_link_libraries(ProjectNestor_server PRIVATE
+target_link_libraries(${PROJECT_NAME}_core PUBLIC
   httplib::httplib
   nlohmann_json::nlohmann_json
   nats_static
 )
+
+target_compile_features(${PROJECT_NAME}_core PUBLIC cxx_std_20)
+set_target_properties(${PROJECT_NAME}_core PROPERTIES CXX_EXTENSIONS OFF)
+
+# ─── Server Executable ─────────────────────────────────────────────────────
+add_executable(ProjectNestor_server src/server_main.cpp)
+
+target_link_libraries(ProjectNestor_server PRIVATE ${PROJECT_NAME}::core)
 
 target_compile_features(ProjectNestor_server PRIVATE cxx_std_20)
 
