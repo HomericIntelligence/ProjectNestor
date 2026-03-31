@@ -23,4 +23,8 @@ COPY --from=builder /src/build/ProjectNestor_server /usr/local/bin/
 EXPOSE 8081
 ENV NESTOR_PORT=8081
 ENV NATS_URL=nats://localhost:4222
+
+RUN useradd -r -s /usr/sbin/nologin nestor
+USER nestor
+
 CMD ["ProjectNestor_server"]
