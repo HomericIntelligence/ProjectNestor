@@ -67,11 +67,8 @@ json Store::submit_research(const json& body) {
   const std::string context = body.value("context", "");
 
   json item = {
-      {"id", id},
-      {"status", "pending"},
-      {"idea", idea},
-      {"context", context},
-      {"submitted_at", submitted_at},
+      {"id", id},           {"status", "pending"},          {"idea", idea},
+      {"context", context}, {"submitted_at", submitted_at},
   };
 
   {

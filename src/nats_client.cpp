@@ -4,6 +4,7 @@
 #include "projectnestor/nats_client.hpp"
 
 #include <iostream>
+
 #include "nats.h"
 
 namespace projectnestor {
@@ -13,11 +14,10 @@ NatsClient::NatsClient(const std::string& url) : url_(url) {}
 NatsClient::~NatsClient() { close(); }
 
 bool NatsClient::connect() {
-  natsStatus s = natsConnection_ConnectTo(
-      reinterpret_cast<natsConnection**>(&conn_), url_.c_str());
+  natsStatus s = natsConnection_ConnectTo(reinterpret_cast<natsConnection**>(&conn_), url_.c_str());
   if (s != NATS_OK) {
-    std::cerr << "[NatsClient] Failed to connect to " << url_
-              << ": " << natsStatus_GetText(s) << "\n";
+    std::cerr << "[NatsClient] Failed to connect to " << url_ << ": " << natsStatus_GetText(s)
+              << "\n";
     conn_ = nullptr;
     connected_ = false;
     return false;
@@ -25,13 +25,10 @@ bool NatsClient::connect() {
 
   jsOptions js_opts;
   jsOptions_Init(&js_opts);
-  s = natsConnection_JetStream(
-      reinterpret_cast<jsCtx**>(&js_),
-      reinterpret_cast<natsConnection*>(conn_),
-      &js_opts);
+  s = natsConnection_JetStream(reinterpret_cast<jsCtx**>(&js_),
+                               reinterpret_cast<natsConnection*>(conn_), &js_opts);
   if (s != NATS_OK) {
-    std::cerr << "[NatsClient] Failed to get JetStream context: "
-              << natsStatus_GetText(s) << "\n";
+    std::cerr << "[NatsClient] Failed to get JetStream context: " << natsStatus_GetText(s) << "\n";
     natsConnection_Destroy(reinterpret_cast<natsConnection*>(conn_));
     conn_ = nullptr;
     connected_ = false;
@@ -73,12 +70,7 @@ void NatsClient::ensure_streams() {
 
   jsStreamInfo* si = nullptr;
   jsErrCode jerr = static_cast<jsErrCode>(0);
-  const natsStatus s = js_AddStream(
-      &si,
-      reinterpret_cast<jsCtx*>(js_),
-      &cfg,
-      nullptr,
-      &jerr);
+  const natsStatus s = js_AddStream(&si, reinterpret_cast<jsCtx*>(js_), &cfg, nullptr, &jerr);
 
   if (s == NATS_OK) {
     jsStreamInfo_Destroy(si);
@@ -99,22 +91,16 @@ bool NatsClient::publish(const std::string& subject, const std::string& payload)
 
   jsPubAck* ack = nullptr;
   jsErrCode jerr = static_cast<jsErrCode>(0);
-  const natsStatus s = js_Publish(
-      &ack,
-      reinterpret_cast<jsCtx*>(js_),
-      subject.c_str(),
-      payload.data(),
-      static_cast<int>(payload.size()),
-      nullptr,
-      &jerr);
+  const natsStatus s = js_Publish(&ack, reinterpret_cast<jsCtx*>(js_), subject.c_str(),
+                                  payload.data(), static_cast<int>(payload.size()), nullptr, &jerr);
 
   if (ack != nullptr) {
     jsPubAck_Destroy(ack);
   }
 
   if (s != NATS_OK) {
-    std::cerr << "[NatsClient] Publish failed on " << subject
-              << ": " << natsStatus_GetText(s) << "\n";
+    std::cerr << "[NatsClient] Publish failed on " << subject << ": " << natsStatus_GetText(s)
+              << "\n";
     return false;
   }
   return true;
