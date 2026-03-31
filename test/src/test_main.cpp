@@ -4,12 +4,8 @@
 
 namespace projectnestor::test {
 
-TEST(VersionTest, ProjectNameIsCorrect) {
-  EXPECT_EQ(kProjectName, "ProjectNestor");
-}
+TEST(VersionTest, ProjectNameIsCorrect) { EXPECT_EQ(kProjectName, "ProjectNestor"); }
 
-TEST(VersionTest, VersionIsSet) {
-  EXPECT_FALSE(kVersion.empty());
-}
+TEST(VersionTest, VersionIsSet) { EXPECT_FALSE(kVersion.empty()); }
 
-} // namespace projectnestor::test
+}  // namespace projectnestor::test
