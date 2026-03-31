@@ -1,8 +1,9 @@
 #pragma once
 
-#include "httplib.h"
 #include "projectnestor/nats_client.hpp"
 #include "projectnestor/store.hpp"
+
+#include "httplib.h"
 
 namespace projectnestor {
 

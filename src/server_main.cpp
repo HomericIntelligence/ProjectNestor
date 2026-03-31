@@ -1,15 +1,16 @@
 // ProjectNestor HTTP Server — C++20
 
+#include "projectnestor/nats_client.hpp"
+#include "projectnestor/routes.hpp"
+#include "projectnestor/store.hpp"
+#include "projectnestor/version.hpp"
+
 #include <csignal>
 #include <cstdlib>
 #include <iostream>
 #include <string>
 
 #include "httplib.h"
-#include "projectnestor/nats_client.hpp"
-#include "projectnestor/routes.hpp"
-#include "projectnestor/store.hpp"
-#include "projectnestor/version.hpp"
 
 namespace {
 httplib::Server* g_server = nullptr;
