@@ -34,22 +34,13 @@ target_include_directories(
 set_project_warnings(${PROJECT_NAME})
 
 # ─── HTTP Server Dependencies ───────────────────────────────────────────────
+# cpp-httplib and nlohmann_json are provided by Conan (run `just deps` first).
+# nats.c stays as FetchContent (not reliably available on ConanCenter).
+find_package(httplib REQUIRED)
+find_package(nlohmann_json REQUIRED)
+find_package(OpenSSL REQUIRED)
+
 include(FetchContent)
-
-FetchContent_Declare(
-  cpp-httplib
-  GIT_REPOSITORY https://github.com/yhirose/cpp-httplib.git
-  GIT_TAG        v0.18.3
-  GIT_SHALLOW    TRUE
-)
-
-FetchContent_Declare(
-  nlohmann_json
-  GIT_REPOSITORY https://github.com/nlohmann/json.git
-  GIT_TAG        v3.11.3
-  GIT_SHALLOW    TRUE
-)
-
 FetchContent_Declare(
   natsc
   GIT_REPOSITORY https://github.com/nats-io/nats.c.git
@@ -61,7 +52,7 @@ set(NATS_BUILD_STREAMING OFF CACHE BOOL "" FORCE)
 set(NATS_BUILD_EXAMPLES  OFF CACHE BOOL "" FORCE)
 set(BUILD_TESTING        OFF CACHE BOOL "" FORCE)
 
-FetchContent_MakeAvailable(cpp-httplib nlohmann_json natsc)
+FetchContent_MakeAvailable(natsc)
 
 # ─── Testable Core Library (everything except main) ────────────────────────
 add_library(${PROJECT_NAME}_core STATIC
@@ -73,15 +64,14 @@ add_library(${PROJECT_NAME}::core ALIAS ${PROJECT_NAME}_core)
 
 target_include_directories(${PROJECT_NAME}_core PUBLIC
   ${PROJECT_SOURCE_DIR}/include
-  ${cpp-httplib_SOURCE_DIR}
-  ${nlohmann_json_SOURCE_DIR}/include
-  ${natsc_SOURCE_DIR}/include
 )
 
 target_link_libraries(${PROJECT_NAME}_core PUBLIC
   httplib::httplib
   nlohmann_json::nlohmann_json
   nats_static
+  OpenSSL::SSL
+  OpenSSL::Crypto
 )
 
 target_compile_features(${PROJECT_NAME}_core PUBLIC cxx_std_20)
@@ -117,3 +107,6 @@ install(
   FILE ${PROJECT_NAME}Targets.cmake
   NAMESPACE ${PROJECT_NAME}::
   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME})
+
+install(TARGETS ProjectNestor_server
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
