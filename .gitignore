@@ -10,4 +10,6 @@ CMakeFiles/
 CMakeCache.txt
 cmake_install.cmake
 CTestTestfile.cmake
+CMakeUserPresets.json
+pixi.lock
 _deps/
