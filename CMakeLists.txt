@@ -50,9 +50,10 @@ FetchContent_Declare(
 
 set(NATS_BUILD_STREAMING OFF CACHE BOOL "" FORCE)
 set(NATS_BUILD_EXAMPLES  OFF CACHE BOOL "" FORCE)
+set(BUILD_TESTING_SAVED "${BUILD_TESTING}")
 set(BUILD_TESTING        OFF CACHE BOOL "" FORCE)
-
 FetchContent_MakeAvailable(natsc)
+set(BUILD_TESTING "${BUILD_TESTING_SAVED}" CACHE BOOL "" FORCE)
 
 # ─── Testable Core Library (everything except main) ────────────────────────
 add_library(${PROJECT_NAME}_core STATIC
