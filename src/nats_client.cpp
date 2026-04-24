@@ -114,16 +114,12 @@ void NatsClient::publish_log(const std::string& subject, const std::string& leve
     return;  // Graceful degradation — NATS unavailable.
   }
 
-  const double timestamp = std::chrono::duration<double>(
-                               std::chrono::system_clock::now().time_since_epoch())
-                               .count();
+  const double timestamp =
+      std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch()).count();
 
   const nlohmann::json payload = {
-      {"timestamp", timestamp},
-      {"service", "nestor"},
-      {"level", level},
-      {"message", message},
-      {"metadata", metadata},
+      {"timestamp", timestamp}, {"service", "nestor"},  {"level", level},
+      {"message", message},     {"metadata", metadata},
   };
 
   const std::string payload_str = payload.dump();

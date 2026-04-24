@@ -101,7 +101,8 @@ TEST_F(RoutesTest, CompleteResearchReturns200) {
   const std::string id = json::parse(submit_res->body)["id"].get<std::string>();
 
   // Complete it.
-  const auto complete_res = client_->Post("/v1/research/" + id + "/complete", "", "application/json");
+  const auto complete_res =
+      client_->Post("/v1/research/" + id + "/complete", "", "application/json");
   ASSERT_TRUE(complete_res);
   EXPECT_EQ(complete_res->status, 200);
   const auto body = json::parse(complete_res->body);
