@@ -80,4 +80,19 @@ json Store::submit_research(const json& body) {
   return json{{"id", id}, {"status", "pending"}};
 }
 
+json Store::complete_research(const std::string& id) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  auto it = research_items_.find(id);
+  if (it == research_items_.end()) {
+    return json{{"error", "not_found"}};
+  }
+
+  it->second["status"] = "completed";
+  it->second["completed_at"] = now_iso8601();
+  --pending_;
+  ++completed_;
+
+  return it->second;
+}
+
 }  // namespace projectnestor

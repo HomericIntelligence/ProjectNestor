@@ -17,6 +17,10 @@ class Store {
   json get_stats() const;
   json submit_research(const json& body);
 
+  // Mark a research task as completed.  Returns the updated item, or a JSON
+  // object with {"error": "not_found"} if the id is unknown.
+  json complete_research(const std::string& id);
+
  private:
   mutable std::mutex mutex_;
   std::atomic<int> active_{0};

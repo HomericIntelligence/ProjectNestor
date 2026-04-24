@@ -37,6 +37,7 @@ void register_routes(httplib::Server& server, Store& store, NatsClient& nats) {
 
     const json result = sp->submit_research(body);
     const std::string id = result["id"].get<std::string>();
+    const std::string topic = body.value("idea", body.value("topic", ""));
 
     // Publish to hi.research.<id> — graceful degradation if NATS unavailable.
     const std::string subject = "hi.research." + id;
@@ -45,9 +46,37 @@ void register_routes(httplib::Server& server, Store& store, NatsClient& nats) {
     payload["status"] = "pending";
     np->publish(subject, payload.dump());
 
+    // Structured log: hi.logs.nestor.research_submitted (ADR-005).
+    np->publish_log("hi.logs.nestor.research_submitted", "info",
+                    "Research submitted: topic=" + topic,
+                    json{{"research_id", id}, {"topic", topic}});
+
     res.status = 202;
     res.set_content(result.dump(), "application/json");
   });
+
+  // ── Complete Research ─────────────────────────────────────────────────────
+
+  server.Post("/v1/research/:id/complete",
+              [sp, np](const httplib::Request& req, httplib::Response& res) {
+                const std::string id = req.path_params.at("id");
+                const json updated = sp->complete_research(id);
+
+                if (updated.contains("error")) {
+                  res.status = 404;
+                  res.set_content(updated.dump(), "application/json");
+                  return;
+                }
+
+                const std::string topic = updated.value("idea", updated.value("topic", ""));
+
+                // Structured log: hi.logs.nestor.research_completed (ADR-005).
+                np->publish_log("hi.logs.nestor.research_completed", "info",
+                                "Research completed: topic=" + topic,
+                                json{{"research_id", id}, {"topic", topic}});
+
+                res.set_content(updated.dump(), "application/json");
+              });
 }
 
 }  // namespace projectnestor

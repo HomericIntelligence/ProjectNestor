@@ -92,4 +92,44 @@ TEST_F(RoutesTest, StatsReflectsSubmission) {
   EXPECT_EQ(body["pending"], 1);
 }
 
+TEST_F(RoutesTest, CompleteResearchReturns200) {
+  // Submit first to get a valid id.
+  const std::string payload = R"({"idea":"test idea","context":"ctx"})";
+  const auto submit_res = client_->Post("/v1/research", payload, "application/json");
+  ASSERT_TRUE(submit_res);
+  ASSERT_EQ(submit_res->status, 202);
+  const std::string id = json::parse(submit_res->body)["id"].get<std::string>();
+
+  // Complete it.
+  const auto complete_res = client_->Post("/v1/research/" + id + "/complete", "", "application/json");
+  ASSERT_TRUE(complete_res);
+  EXPECT_EQ(complete_res->status, 200);
+  const auto body = json::parse(complete_res->body);
+  EXPECT_EQ(body["status"], "completed");
+  EXPECT_EQ(body["id"], id);
+}
+
+TEST_F(RoutesTest, CompleteResearchUnknownIdReturns404) {
+  const auto res = client_->Post("/v1/research/nonexistent-id/complete", "", "application/json");
+  ASSERT_TRUE(res);
+  EXPECT_EQ(res->status, 404);
+  const auto body = json::parse(res->body);
+  EXPECT_EQ(body["error"], "not_found");
+}
+
+TEST_F(RoutesTest, StatsReflectsCompletion) {
+  const std::string payload = R"({"idea":"test","context":"ctx"})";
+  const auto submit_res = client_->Post("/v1/research", payload, "application/json");
+  ASSERT_TRUE(submit_res);
+  const std::string id = json::parse(submit_res->body)["id"].get<std::string>();
+
+  client_->Post("/v1/research/" + id + "/complete", "", "application/json");
+
+  const auto res = client_->Get("/v1/research/stats");
+  ASSERT_TRUE(res);
+  const auto body = json::parse(res->body);
+  EXPECT_EQ(body["pending"], 0);
+  EXPECT_EQ(body["completed"], 1);
+}
+
 }  // namespace projectnestor::test

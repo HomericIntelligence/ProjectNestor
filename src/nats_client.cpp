@@ -3,9 +3,11 @@
 
 #include "projectnestor/nats_client.hpp"
 
+#include <chrono>
 #include <iostream>
 
 #include "nats.h"
+#include "nlohmann/json.hpp"
 
 namespace projectnestor {
 
@@ -104,6 +106,32 @@ bool NatsClient::publish(const std::string& subject, const std::string& payload)
     return false;
   }
   return true;
+}
+
+void NatsClient::publish_log(const std::string& subject, const std::string& level,
+                             const std::string& message, const nlohmann::json& metadata) {
+  if (!connected_) {
+    return;  // Graceful degradation — NATS unavailable.
+  }
+
+  const double timestamp = std::chrono::duration<double>(
+                               std::chrono::system_clock::now().time_since_epoch())
+                               .count();
+
+  const nlohmann::json payload = {
+      {"timestamp", timestamp},
+      {"service", "nestor"},
+      {"level", level},
+      {"message", message},
+      {"metadata", metadata},
+  };
+
+  const std::string payload_str = payload.dump();
+
+  // Use core NATS publish (non-JetStream) for fire-and-forget log delivery.
+  natsConnection_PublishString(reinterpret_cast<natsConnection*>(conn_), subject.c_str(),
+                               payload_str.c_str());
+  // Return value intentionally ignored — log publish failures are non-fatal.
 }
 
 }  // namespace projectnestor

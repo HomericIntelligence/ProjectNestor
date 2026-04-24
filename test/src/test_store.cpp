@@ -80,4 +80,25 @@ TEST(StoreTest, SubmitResearchMultipleItems) {
   EXPECT_EQ(store.get_stats()["pending"], 3);
 }
 
+TEST(StoreTest, CompleteResearchTransitionsStatus) {
+  Store store;
+  const json submit_result = store.submit_research({{"idea", "test idea"}});
+  const std::string id = submit_result["id"].get<std::string>();
+
+  const json completed = store.complete_research(id);
+  EXPECT_EQ(completed["id"], id);
+  EXPECT_EQ(completed["status"], "completed");
+  EXPECT_TRUE(completed.contains("completed_at"));
+
+  const json stats = store.get_stats();
+  EXPECT_EQ(stats["pending"], 0);
+  EXPECT_EQ(stats["completed"], 1);
+}
+
+TEST(StoreTest, CompleteResearchUnknownIdReturnsError) {
+  Store store;
+  const json result = store.complete_research("nonexistent-id");
+  EXPECT_EQ(result["error"], "not_found");
+}
+
 }  // namespace projectnestor::test
