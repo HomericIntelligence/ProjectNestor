@@ -1,6 +1,8 @@
 #pragma once
 #include <string>
 
+#include "nlohmann/json.hpp"
+
 namespace projectnestor {
 
 class NatsClient {
@@ -18,6 +20,11 @@ class NatsClient {
 
   // Publish payload to subject. Returns false if not connected or publish fails.
   bool publish(const std::string& subject, const std::string& payload);
+
+  // Publish a structured log event to hi.logs.nestor.* (ADR-005).
+  // Fire-and-forget: never fails the caller if NATS is unavailable.
+  void publish_log(const std::string& subject, const std::string& level,
+                   const std::string& message, const nlohmann::json& metadata);
 
  private:
   std::string url_;

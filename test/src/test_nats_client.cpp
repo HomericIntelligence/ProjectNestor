@@ -48,4 +48,12 @@ TEST(NatsClientTest, DoubleCloseIsSafe) {
   EXPECT_FALSE(client.is_connected());
 }
 
+TEST(NatsClientTest, PublishLogWhenNotConnectedIsNoOp) {
+  // publish_log must not throw or crash when NATS is unavailable.
+  NatsClient client("nats://127.0.0.1:1");
+  EXPECT_NO_THROW(client.publish_log("hi.logs.nestor.research_submitted", "info",
+                                     "Research submitted: topic=test",
+                                     nlohmann::json{{"research_id", "abc"}, {"topic", "test"}}));
+}
+
 }  // namespace projectnestor::test
