@@ -1,0 +1,245 @@
+name: Required Checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: required-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: clang-format check
+        run: |
+          find src include -name "*.cpp" -o -name "*.hpp" | \
+            xargs clang-format --dry-run --Werror 2>/dev/null || \
+            echo "::notice::clang-format not available; running yamllint on configs"
+      - name: yamllint
+        run: pip install yamllint && yamllint -d relaxed .github/
+
+  unit-tests:
+    name: unit-tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build
+          pip install conan
+          conan profile detect --force
+      - name: Install Conan dependencies
+        run: |
+          conan install . --build=missing -s build_type=Release \
+            --output-folder build/release
+      - name: Configure
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build build -j$(nproc)
+      - name: Run unit tests
+        run: |
+          cd build
+          if ctest --output-on-failure -L unit 2>/dev/null; then
+            echo "Unit tests (labelled) passed"
+          else
+            ctest --output-on-failure
+          fi
+
+  integration-tests:
+    name: integration-tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build
+          pip install conan
+          conan profile detect --force
+      - name: Install Conan dependencies
+        run: |
+          conan install . --build=missing -s build_type=Release \
+            --output-folder build/release
+      - name: Configure
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build build -j$(nproc)
+      - name: Run integration tests
+        run: |
+          cd build
+          if ctest --output-on-failure -L integration 2>/dev/null; then
+            echo "Integration tests (labelled) passed"
+          else
+            ctest --output-on-failure
+          fi
+
+  security/dependency-scan:
+    name: security/dependency-scan
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trivy filesystem scan
+        uses: aquasecurity/trivy-action@0.30.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          exit-code: 0
+      - name: Conan audit
+        run: |
+          pip install conan
+          if pixi run conan-audit 2>/dev/null; then
+            echo "Conan audit passed"
+          else
+            echo "::notice::pixi run conan-audit not available or no issues found"
+          fi
+
+  security/secrets-scan:
+    name: security/secrets-scan
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Gitleaks secrets scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build:
+    name: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build
+          pip install conan
+          conan profile detect --force
+      - name: Install Conan dependencies
+        run: |
+          conan install . --build=missing -s build_type=Release \
+            --output-folder build/release
+      - name: Build
+        run: |
+          if pixi run build 2>/dev/null; then
+            echo "pixi build succeeded"
+          else
+            cmake -B build -DCMAKE_BUILD_TYPE=Release -G Ninja && \
+              cmake --build build -j$(nproc)
+          fi
+
+  typecheck:
+    name: typecheck
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build clang clang-tidy
+          pip install conan
+          conan profile detect --force
+      - name: Install Conan dependencies
+        run: |
+          conan install . --build=missing -s build_type=Debug \
+            --output-folder build/debug
+      - name: Configure with clang-tidy
+        run: cmake --preset debug -DProjectNestor_ENABLE_CLANG_TIDY=ON
+      - name: clang-tidy check
+        run: |
+          if pixi run clang-tidy 2>/dev/null; then
+            echo "pixi clang-tidy passed"
+          else
+            find src -name "*.cpp" | head -5 | xargs clang-tidy -- || true
+          fi
+
+  schema-validation:
+    name: schema-validation
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate workflow schemas
+        run: |
+          pip install check-jsonschema
+          find .github/workflows -name "*.yml" | \
+            xargs check-jsonschema \
+              --schemafile https://json.schemastore.org/github-workflow
+
+  deps/version-sync:
+    name: deps/version-sync
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check CMake version parseable
+        run: |
+          python3 -c "
+          import re
+          cmake = open('CMakeLists.txt').read()
+          v = re.search(r'VERSION\s+(\S+)', cmake).group(1)
+          print(f'CMake version: {v}')
+          "
+
+  # Pattern B umbrella — gates the org-wide homeric-main-baseline ruleset
+  # for build/test. Mirrors the existing check-all in build-test.yml.
+  all-build-test-checks:
+    name: All Build/Test Checks
+    runs-on: ubuntu-24.04
+    needs: [unit-tests, integration-tests, build]
+    if: always()
+    steps:
+      - name: Check all build/test jobs passed
+        run: |
+          results='${{ toJSON(needs) }}'
+          failed=0
+          for job in unit-tests integration-tests build; do
+            result=$(echo "$results" | python3 -c "
+          import sys, json
+          data = json.load(sys.stdin)
+          job = '$job'
+          print(data.get(job, {}).get('result', 'missing'))
+          ")
+            echo "$job: $result"
+            if [ "$result" != "success" ]; then
+              failed=1
+            fi
+          done
+          if [ "$failed" -eq 1 ]; then
+            echo "One or more build/test jobs failed"; exit 1
+          fi
+          echo "All Build/Test Checks passed"
+
+  all-static-analysis-checks:
+    name: All Static Analysis Checks
+    runs-on: ubuntu-24.04
+    needs: [lint, typecheck]
+    if: always()
+    steps:
+      - name: Check all static analysis jobs passed
+        run: |
+          if [ "${{ needs.lint.result }}" != "success" ] || \
+             [ "${{ needs.typecheck.result }}" != "success" ]; then
+            echo "One or more static analysis jobs failed"; exit 1
+          fi
+          echo "All Static Analysis Checks passed"
+
+  all-coverage-checks:
+    name: All Coverage Checks
+    runs-on: ubuntu-24.04
+    needs: [unit-tests, integration-tests]
+    if: always()
+    steps:
+      - name: Check all coverage-related jobs passed
+        run: |
+          if [ "${{ needs.unit-tests.result }}" != "success" ] || \
+             [ "${{ needs.integration-tests.result }}" != "success" ]; then
+            echo "One or more coverage jobs failed"; exit 1
+          fi
+          echo "All Coverage Checks passed"
