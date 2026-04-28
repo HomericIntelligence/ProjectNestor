@@ -8,6 +8,7 @@ distributed agent mesh.
 **Role in the pipeline:** User ↔ Odysseus ↔ **Nestor** ↔ Agamemnon ↔ agentic pipeline loop → completion
 
 Nestor receives ideas/tasks from Odysseus and runs them through a research pipeline:
+
 - IDEA → RESEARCH & SEARCH → REVIEW GATE → RESEARCHED BRIEF
 - Research myrmidons pull from `hi.research.*` subjects (rate-limited, MaxAckPending=1)
 - Uses Telemachy internally for workflow orchestration
@@ -23,10 +24,12 @@ Nestor receives ideas/tasks from Odysseus and runs them through a research pipel
 ## Architecture
 
 All communication flows **through ProjectKeystone** (invisible transport):
+
 - Local (intra-host): BlazingMQ + C++20 MessageBus
 - Cross-host: NATS JetStream via nats.c v3.12.0 over Tailscale
 
 Relevant NATS subjects:
+
 - `hi.research.>` — research task queue (PULL consumers, research myrmidons pull from here)
 - `hi.pipeline.>` — pipeline state updates (pub to Odysseus)
 
