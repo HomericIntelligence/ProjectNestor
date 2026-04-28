@@ -40,12 +40,12 @@ jobs:
           conan install . --build=missing -s build_type=Release \
             --output-folder build/release
       - name: Configure
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+        run: cmake --preset release
       - name: Build
-        run: cmake --build build -j$(nproc)
+        run: cmake --build --preset release
       - name: Run unit tests
         run: |
-          cd build
+          cd build/release
           if ctest --output-on-failure -L unit 2>/dev/null; then
             echo "Unit tests (labelled) passed"
           else
@@ -68,12 +68,12 @@ jobs:
           conan install . --build=missing -s build_type=Release \
             --output-folder build/release
       - name: Configure
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+        run: cmake --preset release
       - name: Build
-        run: cmake --build build -j$(nproc)
+        run: cmake --build --preset release
       - name: Run integration tests
         run: |
-          cd build
+          cd build/release
           if ctest --output-on-failure -L integration 2>/dev/null; then
             echo "Integration tests (labelled) passed"
           else
@@ -86,7 +86,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Trivy filesystem scan
-        uses: aquasecurity/trivy-action@0.30.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
           scan-ref: .
